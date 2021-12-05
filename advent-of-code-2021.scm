@@ -97,12 +97,12 @@
    (+ (submarine-depth submarine) (submarine-command-depth command))
    0))
 
-(define (apply-submarine-command-2 update position)
+(define (apply-submarine-command-2 command submarine)
   (let
-      ((new-aim (+ (submarine-aim position) (submarine-command-depth update))))
+      ((new-aim (+ (submarine-aim submarine) (submarine-command-depth command))))
   (make-submarine
-   (+ (submarine-distance position) (submarine-command-distance update))
-   (+ (submarine-depth position) (* new-aim (submarine-command-distance update)))
+   (+ (submarine-distance submarine) (submarine-command-distance command))
+   (+ (submarine-depth submarine) (* new-aim (submarine-command-distance command)))
    new-aim)))
 
 (define (submarine-magnitude submarine)
