@@ -6,6 +6,7 @@
  (ice-9 textual-ports)
  (ice-9 getopt-long)
  (srfi srfi-1)
+ (srfi srfi-8)
  (srfi srfi-9))
 
 ;; High level solution. Read input file and delegate details to
@@ -36,7 +37,8 @@
 (define (solutions)
   (vector
    solution-1:sonar-sweep
-   solution-2:dive))
+   solution-2:dive
+   solution-3:binary-diagnostic))
 
 ;; Solution utilities.
 (define (split-lines string)
@@ -44,6 +46,8 @@
 
 (define (strings->numbers strings)
   (map string->number strings))
+
+(define (sum numbers) (apply + numbers))
 
 ;; Solutions.
 (define (count-increases measurements)
@@ -60,11 +64,10 @@
       ((depth-measurements (strings->numbers (split-lines input)))
        (increases (count-increases depth-measurements))
        (windows (sliding-windows depth-measurements 3))
-       (window-sums (map (lambda (x) (apply + x)) windows))
+       (window-sums (map sum windows))
        (sum-increases (count-increases window-sums)))
     (list increases sum-increases)))
-(define-syntax-rule (basic-record name ...)
-  (define-record-type (symbol-append
+
 (define-record-type <submarine>
   (make-submarine distance depth aim)
   submarine?
@@ -115,3 +118,50 @@
        (final-position-2 (fold apply-submarine-command-2 initial-position commands))
        (final-magnitude-2 (submarine-magnitude final-position-2)))
     (list final-magnitude-1 final-magnitude-2)))
+
+(define (line->bit-list line)
+  (map
+   (lambda (x) (- (char->integer x) (char->integer #\0)))
+   (string->list line)))
+
+(define (bit-list->integer bit-list)
+  (apply
+   +
+   (map
+    (lambda (x y) (* x (expt 2 y)))
+    (reverse bit-list)
+    (iota (length bit-list)))))
+
+(define (health-safety-rating position most-common? candidates)
+  (if
+   (<= (length candidates) 1)
+   (first candidates)
+   (receive (zeroes ones)
+       (partition (lambda (x) (= (list-ref x position) 0)) candidates)
+     (let
+	 ((zeroes-len (length zeroes))
+	  (ones-len (length ones)))
+       (health-safety-rating
+	(1+ position)
+	most-common?
+	(if
+	 most-common?
+	 (if (>= ones-len zeroes-len) ones zeroes)
+	 (if (<= zeroes-len ones-len) zeroes ones)))))))
+
+(define (solution-3:binary-diagnostic input)
+  (let*
+      ((lines (split-lines input))
+       (numbers (length lines))
+       (bit-lists (map line->bit-list lines))
+       (bits (length (first bit-lists)))
+       (position-sums (apply map + bit-lists))
+       (gamma-bits (map (lambda (x) (if (>= (* 2 x) numbers) 1 0)) position-sums))
+       (gamma (bit-list->integer gamma-bits))
+       (epsilon-bits (map (lambda (x) (if (>= (* 2 x) numbers) 0 1)) position-sums))
+       (epsilon (bit-list->integer epsilon-bits))
+       (power (* gamma epsilon))
+       (oxygen-rating (bit-list->integer (health-safety-rating 0 #t bit-lists)))
+       (co2-rating (bit-list->integer (health-safety-rating 0 #f bit-lists)))
+       (health-rating (* oxygen-rating co2-rating)))
+    (list power health-rating)))
